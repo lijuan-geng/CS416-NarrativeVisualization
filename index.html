@@ -1,0 +1,188 @@
+<html>
+<head>
+  <title>Narrative Visualization</title>
+  <script src='https://d3js.org/d3.v5.min.js'></script>
+  <!-- Include the d3-annotation library -->
+  <script src="https://rawcdn.githack.com/susielu/d3-annotation/v2.5.1/d3-annotation.min.js"></script>
+  <style>
+    circle {fill: lightblue; stroke: black;}
+    .axis text {
+      font-family: sans-serif;
+      font-size: 14px;
+    }
+    .axis-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: bold;
+      fill: #555;
+    }
+    .button-group button {
+      margin-right: 5px; /* Puts a little space between buttons */
+      padding: 10px 15px; /* Makes the buttons a bit bigger */
+      font-size: 16px; /* Makes the text on the button a bit bigger */
+      cursor: pointer; /* Makes your mouse turn into a hand when you hover */
+      font-family: sans-serif;
+    }
+    body {
+      font-family: sans-serif;	
+    }
+
+    /* Styles for d3-annotation */
+    .annotation-note-label {
+      font-family: sans-serif;
+      font-size: 14px;
+      fill: #333;
+      font-weight: bold;
+    }
+    .annotation-connector path {
+      stroke: #666;
+      stroke-width: 1px;
+    }
+    .annotation-subject path {
+        fill: none; /* Make subject circle transparent */
+        stroke: red; /* Highlight color */
+        stroke-width: 2px;
+    }
+    .annotation-note-bg {
+        fill: white;
+        stroke: #666;
+        stroke-width: 1px;
+    }
+  </style>
+</head>
+<body onload='init()'>
+<h1>Automobile Fuel Efficiency Study</h1>
+<p>This study investigates automobile fuel efficiency based on automobile data
+collected in Year 2017, and aims to find evidence-based answers
+to some critical questions that help consumers make informative choices:
+<ul>
+  <li>How do electric vehicles compare with gasoline/diesel vehicles in terms of
+fuel economy?</li>
+  <li>In general, how does engine cylinder count impact the fuel efficiency
+of gasoline vehicles?</li>
+</ul> 
+
+<svg width=700 height=600>
+</svg>
+<p>On a logarithmic scale, this chart plots Average City MPG (Miles per
+Gallon) horizontally and Average Highway MPG vertically. Each circle in the
+scatterplot represents a vehicle's MPG performance, and the circle radius is
+proportional to the number of engine cylinders. Electric vehicles don't have
+real engines, so they are represented by the smallest circles, while the bigger circles are used for cars with 2-12 engine cylinders.</p>
+<p>With the smallest circles concentrated at the top right corner, the chart
+clearly shows that electric cars have much higher Highway and City MPG and thus
+better fuel efficiency.</p>
+<p>Circles gradually get bigger as we move along the diagonal line from top
+right to bottom left, where the lower MPG performances are found. Having more
+engine cylinders generally provides smoother engine operation and higher potential
+for horsepower. However, due to increased complexity, weight, and friction,
+having more engine cylinders often results in lower fuel efficiency.</p>
+<p>Click the buttons below to learn more about the fuel efficiency of
+Electricity or Gasoline cars from different car makers:</p>
+
+<div class="button-group">
+    <button
+		onclick="window.location.href='https://lijuan-geng.github.io/CS416-NarrativeVisualization/electricity.html'">
+      Electricity
+    </button>
+    <button onclick="window.location.href='https://lijuan-geng.github.io/CS416-NarrativeVisualization/gasoline.html'">
+      Gasoline
+    </button>
+</div>
+
+<script>
+async function init() {
+  const data = await d3.csv('https://flunky.github.io/cars2017.csv');
+
+  // Append and Translate the Inner Group (`<g>`) for inner chart area
+  const chartGroup = d3.select("svg").append("g").attr("transform", "translate(100,50)");
+
+  // Create scales for the inner chart area
+  const xscale = d3.scaleLog().domain([10,150]).range([0,500]);
+  const yscale = d3.scaleLog().domain([10,150]).range([500,0]);
+
+  // Add Y-axis
+  d3.select('svg').append('g')
+    .attr("class", "y-axis axis")
+    .attr("transform", "translate(100,50)")
+    .call(d3.axisLeft(yscale).tickValues([10,20,50,100]).tickFormat(d3.format("~s")));
+
+  // Add X-axis
+  d3.select("svg").append("g")
+    .attr("class", "x-axis axis")
+    .attr("transform", "translate(100,550)")
+    .call(d3.axisBottom(xscale).tickValues([10,20,50,100]).tickFormat(d3.format("~s")));
+
+  // Add the circles (data points) for the scatter plot
+  chartGroup.selectAll("circle").data(data).enter().append("circle")
+    .attr("cx", function(d) { return xscale(d.AverageCityMPG); })
+    .attr("cy", function(d) { return yscale(d.AverageHighwayMPG); })
+    .attr("r", function(d) { return +d.EngineCylinders + 2; });
+
+  // Add X-axis label
+  d3.select("svg").append("text")
+    .attr("class", "axis-label")
+    .attr("x", 400)
+    .attr("y", 595)
+    .style("text-anchor", "middle")
+    .text("Average City MPG (Miles Per Gallon)");
+
+  // Add Y-axis label
+  d3.select("svg").append("text")
+    .attr("class", "axis-label")
+    .attr("transform", "rotate(-90)") // Rotate the text to be vertical
+    .attr("y", 30)
+    .attr("x", -300)
+    .style("text-anchor", "middle")
+    .text("Average Highway MPG");
+  
+  // --- Start Annotation Code ---
+  // Define the annotation data
+  const annotations = [{
+    note: {
+      label: "These cars have high City and Highway MPG.",
+      title: "Efficient Cars"
+    },
+    // Adjusted x and y to better center the annotation on the points
+    x: xscale(110) + 100, // X position (100 is for the group translation)
+    y: yscale(110) + 50,  // Y position (50 is for the group translation)
+    dy: -20, // Vertical offset for the note
+    dx: -100,
+    subject: {
+      radius: 75,
+      radiusPadding: 5
+    },
+    // Use annotationCalloutCircle to create a circle-based annotation
+    type: d3.annotationCalloutCircle
+  },{
+    note: {
+        label: "These cars have low City and Highway MPG.",
+        title: "Inefficient Cars",
+        wrap: 150 // Added a wrap property for better text wrapping
+    },
+    x: xscale(12) + 100,
+    y: yscale(20) + 50,
+    dy: 50,
+    dx: 120,
+    subject: {
+        radius: 64,
+        radiusPadding: 5
+    },
+    type: d3.annotationCalloutCircle
+  }];
+
+  // Create the annotation generator
+  const makeAnnotations = d3.annotation()
+    .editMode(false)
+    .annotations(annotations);
+
+  // Append the annotation group to the SVG
+  d3.select("svg").append("g")
+    .attr("class", "annotation-group")
+    .call(makeAnnotations);
+  // --- End Annotation Code ---
+}
+</script>
+</body>
+</html>
+

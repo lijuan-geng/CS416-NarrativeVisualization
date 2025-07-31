@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Narrative Visualization</title>
+  <script src='https://d3js.org/d3.v5.min.js'></script>
+  <!-- Include d3-annotation library -->
+  <script src="https://rawcdn.githack.com/susielu/d3-annotation/v2.5.1/d3-annotation.min.js"></script>
+  <style>
+    rect {fill: lightblue; stroke: black; }
+    rect:hover { fill:orange; }
+    .axis text {
+      font-family: sans-serif;
+      font-size: 14px;}
+    .axis-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: bold;
+      fill: #555;
+    }
+    .button-group button {
+      margin-right: 5px; /* Puts a little space between buttons */
+      padding: 10px 15px; /* Makes the buttons a bit bigger */
+      font-size: 16px; /* Makes the text on the button a bit bigger */
+      cursor: pointer; /* Makes your mouse turn into a hand when you hover */
+      font-family: sans-serif;
+    }
+    body {
+      font-family: sans-serif;
+    }
+    /* Styles for d3-annotation */
+    .annotation-group {
+      opacity: 0; /* Start hidden */
+      transition: opacity 0.2s ease-in-out; /* Smooth fade in/out */
+      pointer-events: none; /* Allows mouse events to pass through */
+    }
+    .annotation-note-label {
+      font-family: sans-serif;
+      font-size: 14px;
+      fill: #333;
+      font-weight: bold;
+    }
+    .annotation-connector path {
+      stroke: #666;
+      stroke-width: 1px;
+    }
+    .annotation-subject path {
+        fill: #666;
+        stroke: #666;
+    }
+    .annotation-note-bg {
+        fill: white;
+        stroke: #666;
+        stroke-width: 1px;
+        min-width: 150px; /* Ensures a minimum width for the annotation box */
+    }
+  </style>
+</head>
+<body onload='init()'>
+<h1>Electric Vehicles Fuel Economy</h1>
+<svg width=700 height=600>
+</svg>
+
+<p>
+This chart ranked major electric cars based on Average MPG (i.e., the average of
+AverageHighwayMPG and AverageCityMPG). When mouse is hovered over a bar, a
+tooltip is displayed with the car's Make, AverageHighwayMPG, and AverageCityMPG.
+</p>
+<p>
+The tooltip provides additional information for users to make purchase decisions
+based on their driving pattern, such as mostly on highway, mostly in city, or
+half and half.
+</p>
+
+<div class="button-group">
+    <button
+    onclick="window.location.href='https://lijuan-geng.github.io/CS416-NarrativeVisualization/index.html'">
+      Home Page
+    </button>
+    <button onclick="window.location.href='https://lijuan-geng.github.io/CS416-NarrativeVisualization/gasoline.html'">
+      Gasoline
+    </button>
+</div>
+
+<script>
+async function init() {
+  const rawData = await d3.csv('https://flunky.github.io/cars2017.csv');
+
+// Filter data to only include 'Electricity' fuel type and convert relevant columns to numbers
+const data = rawData.filter(d => d.Fuel === "Electricity")
+										.map(d => {
+                    // Clean the Highway and City MPG values first
+                    const highwayMPG = isNaN(+d.AverageHighwayMPG) ? 0 : +d.AverageHighwayMPG;
+                    const cityMPG = isNaN(+d.AverageCityMPG) ? 0 : +d.AverageCityMPG;
+                        
+                    return {
+                    // Ensure Make is a string, default to 'Unknown' if not present
+                    Make: d.Make ? String(d.Make) : 'Unknown',
+                    AverageHighwayMPG: highwayMPG,
+                    AverageCityMPG: cityMPG,
+                    // Calculate the new AverageMPG column and ensure it's an integer
+                    AverageMPG: Math.floor((highwayMPG + cityMPG) / 2)
+                    };
+       });
+  // Print the size of the loaded data to the console
+  console.log("Number of entries loaded:", data.length);
+
+  // Check if data is empty after filtering; if so, log a message and exit
+  if (data.length === 0) {
+    console.warn("No 'Electricity' vehicle data found after filtering. Chart will not be rendered.");
+    // Optionally, display a message on the SVG itself
+    d3.select("svg").append("text")
+      .attr("x", 350)
+      .attr("y", 300)
+      .attr("text-anchor", "middle")
+      .style("font-size", "18px")
+      .style("fill", "#888")
+      .text("No data found for Electric Vehicles.");
+    return; // Stop the function execution
+  }
+
+  // Sort data based on AverageMPG in descending order
+  data.sort((a, b) => b.AverageMPG - a.AverageMPG);
+
+  // Append and Translate the Inner Group (`<g>`)
+  // This group will contain the bars
+  const chartGroup = d3.select("svg").append("g").attr("transform", "translate(150,50)");
+
+  // Create scales for the inner chart area
+  // Ensure the domain max is calculated from the potentially cleaned data
+  const xscale = d3.scaleLinear().domain([70, d3.max(data, d => d.AverageMPG) + 10]).range([0,500]);
+  const yscale = d3.scaleBand().domain(data.map(d => d.Make)).range([0,500]).padding(0.1);
+
+  // Draw Bars
+  chartGroup.selectAll("rect").data(data).enter().append("rect")
+    .attr("x", 0)
+    .attr("y", d => yscale(d.Make))
+    .attr("width", d => xscale(d.AverageMPG))
+    .attr("height", yscale.bandwidth())
+    .on("mouseover", function(d, i) {
+      // Remove any existing annotation before adding a new one
+      d3.select("svg").select(".annotation-group").remove();
+
+      // Define the annotation
+      const annotations = [{
+        note: {
+          // Added Make and line breaks for better readability
+          label: `${d.Make}\nHighway: ${d.AverageHighwayMPG} \nCity: ${d.AverageCityMPG}`,
+          bgPadding: 5,
+          title: "" // Title is now part of the label, so clear this
+        },
+        data: {
+          Make: d.Make,
+          AverageMPG: d.AverageMPG
+        },
+        dy: -20, // Vertical offset for the note
+        dx: 20,  // Horizontal offset for the note
+        subject: {
+          radius: 5, // Radius of the circle at the data point
+          radiusPadding: 0
+        },
+        type: d3.annotationCalloutCircle // Use the circle callout type
+      }];
+
+      // Create the annotation generator
+      const makeAnnotations = d3.annotation()
+        .editMode(false) // Set to true for interactive editing (not needed for tooltip)
+        .type(d3.annotationLabel) // Default type, overridden by annotation.type
+        .accessors({
+          // X position needs to account for the chartGroup's translation (150)
+          x: data_item => 150 + xscale(data_item.AverageMPG),
+          // Y position needs to account for the chartGroup's translation (50) and center on the bar
+          y: data_item => 50 + yscale(data_item.Make) + yscale.bandwidth() / 2
+        })
+        .annotations(annotations);
+
+      // Append the annotation group to the main SVG and call the generator
+      d3.select("svg").append("g")
+        .attr("class", "annotation-group")
+        .call(makeAnnotations)
+        .transition()
+        .duration(200)
+        .style("opacity", 1); // Fade in the annotation
+    })
+    .on("mouseout", function(d, i) {
+      // Fade out and remove the annotation group
+      d3.select("svg").select(".annotation-group")
+        .transition()
+        .duration(500)
+        .style("opacity", 0)
+        .remove();
+    });
+
+  // Add X-axis
+  d3.select("svg").append("g")
+    .attr("class", "x-axis axis")
+    .attr("transform", "translate(150,550)")
+    .call(d3.axisBottom(xscale));
+
+  // Add Y-axis
+  d3.select("svg").append("g")
+    .attr("class", "y-axis axis")
+    .attr("transform", "translate(150,50)")
+    .call(d3.axisLeft(yscale));
+
+  // Add X-axis label
+  d3.select("svg").append("text")
+    .attr("class", "axis-label")
+    .attr("x", 400)
+    .attr("y", 595)
+    .style("text-anchor", "middle")
+    .text("Average MPG");
+
+  // Add Y-axis label
+  d3.select("svg").append("text")
+    .attr("class", "axis-label")
+    .attr("transform", "rotate(-90)") // Rotate the text to be vertical
+    .attr("y", 30)
+    .attr("x", -300)
+    .style("text-anchor", "middle")
+    .text("Car Makes");
+}
+</script>
+</body>
+</html>
+
