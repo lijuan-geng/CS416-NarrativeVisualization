@@ -56,28 +56,27 @@
   </style>
 </head>
 <body onload='init()'>
-<h1>Electric Vehicles Fuel Economy</h1>
-<svg width=700 height=600>
+<h1>Fuel Economy for Electric Vehicles</h1>
+<svg width=800 height=600>
 </svg>
 
 <p>
-This chart ranked major electric cars based on Average MPG (i.e., the average of
-AverageHighwayMPG and AverageCityMPG). When mouse is hovered over a bar, a
+This chart ranks major electric cars based on Average MPG (i.e., the mean of
+AverageHighwayMPG and AverageCityMPG).</p> 
+<p>When mouse hovers over a bar, the bar is highlighted in orange color and a
 tooltip is displayed with the car's Make, AverageHighwayMPG, and AverageCityMPG.
-</p>
-<p>
 The tooltip provides additional information for users to make purchase decisions
-based on their driving pattern, such as mostly on highway, mostly in city, or
-half and half.
+based on their driving pattern, such as mostly on highway, mostly in city, or a
+combination of both.
 </p>
 
 <div class="button-group">
     <button
-    onclick="window.location.href='https://lijuan-geng.github.io/CS416-NarrativeVisualization/index.html'">
+    onclick="window.location.href='https://lijuan-geng.github.io/cs416-narrativevisualization/index.html'">
       Home Page
     </button>
-    <button onclick="window.location.href='https://lijuan-geng.github.io/CS416-NarrativeVisualization/gasoline.html'">
-      Gasoline
+    <button onclick="window.location.href='https://lijuan-geng.github.io/cs416-narrativevisualization/gasoline.html'">
+      Gasoline Vehicles
     </button>
 </div>
 
@@ -152,8 +151,8 @@ const data = rawData.filter(d => d.Fuel === "Electricity")
           Make: d.Make,
           AverageMPG: d.AverageMPG
         },
-        dy: -20, // Vertical offset for the note
-        dx: 20,  // Horizontal offset for the note
+        dy: -10, // Vertical offset for the note
+        dx: 100,  // Horizontal offset for the note
         subject: {
           radius: 5, // Radius of the circle at the data point
           radiusPadding: 0
@@ -217,7 +216,7 @@ const data = rawData.filter(d => d.Fuel === "Electricity")
     .attr("y", 30)
     .attr("x", -300)
     .style("text-anchor", "middle")
-    .text("Car Makes");
+    .text("Make");
 }
 </script>
 </body>

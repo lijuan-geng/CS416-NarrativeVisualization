@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Narrative Visualization</title>
+  <!-- Updated the D3.js library to version 6 to support d3.group() -->
+  <script src='https://d3js.org/d3.v6.min.js'></script>
+  <!-- Include d3-annotation library -->
+  <script src="https://rawcdn.githack.com/susielu/d3-annotation/v2.5.1/d3-annotation.min.js"></script>
+  <style>
+    rect {fill: lightblue; stroke: black; }
+    rect:hover { fill:orange; }
+    .axis text {
+      font-family: sans-serif;
+      font-size: 14px;}
+    .axis-label {
+      font-family: 'Inter', sans-serif;
+      font-size: 14px;
+      font-weight: bold;
+      fill: #555;
+    }
+    .button-group button {
+      margin-right: 5px; /* Puts a little space between buttons */
+      padding: 10px 15px; /* Makes the buttons a bit bigger */
+      font-size: 16px; /* Makes the text on the button a bit bigger */
+      cursor: pointer; /* Makes your mouse turn into a hand when you hover */
+      font-family: sans-serif;
+    }
+    body {
+      font-family: sans-serif;
+    }
+    /* Set the style of "option" to be same as ".axis text" */
+    option {
+      font-family: sans-serif;
+      font-size: 14px;
+    }
+    /* Styles for d3-annotation */
+    .annotation-group {
+      opacity: 0; /* Start hidden */
+      transition: opacity 0.2s ease-in-out; /* Smooth fade in/out */
+      pointer-events: none; /* Allows mouse events to pass through */
+    }
+    .annotation-note-label {
+      font-family: sans-serif;
+      font-size: 14px;
+      fill: #333;
+      font-weight: bold;
+    }
+    .annotation-connector path {
+      stroke: #666;
+      stroke-width: 1px;
+    }
+    .annotation-subject path {
+        fill: #666;
+        stroke: #666;
+    }
+    .annotation-note-bg {
+        fill: white;
+        stroke: #666;
+        stroke-width: 1px;
+        min-width: 150px; /* Ensures a minimum width for the annotation box */
+    }
+    #cylinder-select {
+        font-family: sans-serif;
+        font-size: 16px; /* Increased font size for the dropdown select element */
+    }
+    #cylinder-select option {
+        font-family: sans-serif;
+        font-size: 16px; /* Increased font size for the dropdown options */
+    }
+    #chart-title {
+      //font-size: 24px;
+      font-family: sans-serif;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body onload='init()'>
+  
+  <h1 id="chart-title"></h1>
+  
+  <div style="margin-bottom: 20px;">
+    Filter by Engine Cylinders:
+    <select id="cylinder-select">
+      <option value="4">4 cylinders</option>
+      <option value="6">6 cylinders</option>
+    </select>
+  </div>
+  <svg width="800" height="650">
+  </svg>
+
+  <p>
+    This chart ranks major gasoline vehicles based on Average MPG (i.e., the mean of
+    AverageHighwayMPG and AverageCityMPG). </p>
+	<p>
+		When mouse hovers over a bar, the bar is highlighted in orange color and a
+    tooltip is displayed with the car's Make, AverageHighwayMPG, and AverageCityMPG.
+    The tooltip provides additional information for users to make purchase decisions
+    based on their driving pattern, such as mostly on highway, mostly in city, or
+    a combination of both.
+  </p>
+	<p>
+	Most cars on the road today have either 4-cylinder or 6-cylinder engines. 4-cylinder engines are frequently
+	found in smaller, more fuel-efficient cars. 6-cylinder engines offer a balance
+	of power and fuel efficiency and are common in larger passenger cars, trucks, and SUVs. 
+	</p>
+	<p>While some larger trucks and luxury cars may have engines with 8 or more
+	cylinders, or other less common configurations with 3, 5, 10-cylinder engines,
+	this study focuses on the most common 4-cylinder and 6-cylinder cases, and
+	could be easily extended to include other configurations.</p>
+
+  <div class="button-group">
+      <button onclick="window.location.href='https://lijuan-geng.github.io/cs416-narrativevisualization/index.html'">
+        Home Page
+      </button>
+      <button
+			onclick="window.location.href='https://lijuan-geng.github.io/cs416-narrativevisualization/electricity.html'">
+        Electric Vehicles
+      </button>
+  </div>
+
+  <script>
+    let allGasolineData = [];
+
+    async function init() {
+      // Load the data once
+      const rawData = await d3.csv('https://flunky.github.io/cars2017.csv');
+
+      // Filter to get only gasoline cars
+      const gasolineCars = rawData.filter(d => d.Fuel === "Gasoline");
+
+      // Group the data by Make and EngineCylinders
+      const groupedData = d3.group(gasolineCars, d => d.Make, d => d.EngineCylinders);
+
+      // Aggregate the data by calculating the mean for each group
+      allGasolineData = Array.from(groupedData, ([make, makeGroup]) => {
+        const aggregatedCylinders = Array.from(makeGroup, ([cylinders, cylinderGroup]) => {
+          const avgHighwayMPG = d3.mean(cylinderGroup, d => +d.AverageHighwayMPG);
+          const avgCityMPG = d3.mean(cylinderGroup, d => +d.AverageCityMPG);
+          const avgMPG = (avgHighwayMPG + avgCityMPG) / 2;
+
+          return {
+            Make: make,
+            EngineCylinders: +cylinders,
+            AverageHighwayMPG: Math.floor(avgHighwayMPG),
+            AverageCityMPG: Math.floor(avgCityMPG),
+            AverageMPG: Math.floor(avgMPG)
+          };
+        });
+        return aggregatedCylinders;
+      }).flat(); // Flatten the array of arrays
+
+      // Set up the change event listener for the dropdown
+      d3.select("#cylinder-select").on("change", updateChart);
+      
+      // Initial chart rendering
+      updateChart();
+    }
+
+    function updateChart() {
+      // Get the selected cylinder value from the dropdown
+      const selectedCylinders = d3.select("#cylinder-select").property("value");
+
+      // Update the chart title dynamically
+      d3.select("#chart-title").text(`Fuel Economy for
+			${selectedCylinders}-Cylinder Gasoline Vehicles`);
+
+      // Filter the data based on the selection
+      let filteredData = allGasolineData.filter(d => d.EngineCylinders === +selectedCylinders);
+      
+      // Clear any existing chart elements before redrawing
+      d3.select("svg").selectAll("*").remove();
+
+      // Sort data based on AverageMPG in descending order
+      filteredData.sort((a, b) => b.AverageMPG - a.AverageMPG);
+
+      // Append and Translate the Inner Group (`<g>`)
+      const chartGroup = d3.select("svg").append("g").attr("transform", "translate(150,50)");
+
+      // Reverted scales to previous dimensions
+      const xscale = d3.scaleLinear().domain([0, d3.max(filteredData, d => d.AverageMPG) + 5]).range([0, 500]);
+      const yscale = d3.scaleBand().domain(filteredData.map(d => d.Make)).range([0, 500]).padding(0.1);
+
+      // Draw Bars
+      chartGroup.selectAll("rect").data(filteredData).enter().append("rect")
+        .attr("x", 0)
+        .attr("y", d => yscale(d.Make))
+        .attr("width", d => xscale(d.AverageMPG))
+        .attr("height", yscale.bandwidth())
+        .on("mouseover", function(event, d) {
+          d3.select("svg").select(".annotation-group").remove();
+
+          const annotations = [{
+            note: {
+              label: `${d.Make}\nHighway: ${d.AverageHighwayMPG} \nCity: ${d.AverageCityMPG}`,
+              bgPadding: 5,
+              title: ""
+            },
+            data: {
+              Make: d.Make,
+              AverageMPG: d.AverageMPG
+            },
+            dy: -10,
+            dx: 50, // Reverted dx to place the box closer to the bar
+            subject: {
+              radius: 5,
+              radiusPadding: 0
+            },
+            type: d3.annotationCalloutCircle
+          }];
+
+          const makeAnnotations = d3.annotation()
+            .editMode(false)
+            .type(d3.annotationLabel)
+            .accessors({
+              x: data_item => 150 + xscale(data_item.AverageMPG),
+              y: data_item => 50 + yscale(data_item.Make) + yscale.bandwidth() / 2
+            })
+            .annotations(annotations);
+
+          d3.select("svg").append("g")
+            .attr("class", "annotation-group")
+            .call(makeAnnotations)
+            .transition()
+            .duration(200)
+            .style("opacity", 1);
+        })
+        .on("mouseout", function(event, d) {
+          d3.select("svg").select(".annotation-group")
+            .transition()
+            .duration(500)
+            .style("opacity", 0)
+            .remove();
+        });
+
+      // Reverted X-axis to previous dimensions
+      d3.select("svg").append("g")
+        .attr("class", "x-axis axis")
+        .attr("transform", "translate(150,550)")
+        .call(d3.axisBottom(xscale));
+
+      // Reverted Y-axis to previous dimensions
+      d3.select("svg").append("g")
+        .attr("class", "y-axis axis")
+        .attr("transform", "translate(150,50)")
+        .call(d3.axisLeft(yscale));
+
+      // Reverted X-axis label to previous dimensions
+      d3.select("svg").append("text")
+        .attr("class", "axis-label")
+        .attr("x", 400)
+        .attr("y", 595)
+        .style("text-anchor", "middle")
+        .text("Average MPG");
+
+      // Reverted Y-axis label to previous dimensions
+      d3.select("svg").append("text")
+        .attr("class", "axis-label")
+        .attr("transform", "rotate(-90)")
+        .attr("y", 30)
+        .attr("x", -300)
+        .style("text-anchor", "middle")
+        .text("Make");
+    }
+  </script>
+</body>
+</html>
+
