@@ -61,14 +61,13 @@
     }
     #cylinder-select {
         font-family: sans-serif;
-        font-size: 16px; /* Increased font size for the dropdown select element */
+        font-size: 16px;
     }
     #cylinder-select option {
         font-family: sans-serif;
-        font-size: 16px; /* Increased font size for the dropdown options */
+        font-size: 16px;
     }
     #chart-title {
-      //font-size: 24px;
       font-family: sans-serif;
       font-weight: bold;
     }
@@ -85,6 +84,7 @@
       <option value="6">6 cylinders</option>
     </select>
   </div>
+	<p>Hover mouse on a bar to view more details</p>
   <svg width="800" height="650">
   </svg>
 
@@ -123,7 +123,7 @@
 
     async function init() {
       // Load the data once
-      const rawData = await d3.csv('https://lijuan-geng.github.io/cs416-narrativevisualization/cars2017.csv');
+      const rawData = await d3.csv('https://flunky.github.io/cars2017.csv');
 
       // Filter to get only gasoline cars
       const gasolineCars = rawData.filter(d => d.Fuel === "Gasoline");

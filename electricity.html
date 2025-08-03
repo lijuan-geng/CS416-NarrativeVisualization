@@ -57,6 +57,7 @@
 </head>
 <body onload='init()'>
 <h1>Fuel Economy for Electric Vehicles</h1>
+<p>Hover mouse on a bar to view more details</p>
 <svg width=800 height=600>
 </svg>
 
@@ -82,7 +83,7 @@ combination of both.
 
 <script>
 async function init() {
-  const rawData = await d3.csv('https://lijuan-geng.github.io/cs416-narrativevisualization/cars2017.csv');
+  const rawData = await d3.csv('https://flunky.github.io/cars2017.csv');
 
 // Filter data to only include 'Electricity' fuel type and convert relevant columns to numbers
 const data = rawData.filter(d => d.Fuel === "Electricity")
@@ -125,7 +126,6 @@ const data = rawData.filter(d => d.Fuel === "Electricity")
   const chartGroup = d3.select("svg").append("g").attr("transform", "translate(150,50)");
 
   // Create scales for the inner chart area
-  // Ensure the domain max is calculated from the potentially cleaned data
   const xscale = d3.scaleLinear().domain([70, d3.max(data, d => d.AverageMPG) + 10]).range([0,500]);
   const yscale = d3.scaleBand().domain(data.map(d => d.Make)).range([0,500]).padding(0.1);
 
@@ -142,10 +142,9 @@ const data = rawData.filter(d => d.Fuel === "Electricity")
       // Define the annotation
       const annotations = [{
         note: {
-          // Added Make and line breaks for better readability
           label: `${d.Make}\nHighway: ${d.AverageHighwayMPG} \nCity: ${d.AverageCityMPG}`,
           bgPadding: 5,
-          title: "" // Title is now part of the label, so clear this
+          title: ""
         },
         data: {
           Make: d.Make,
