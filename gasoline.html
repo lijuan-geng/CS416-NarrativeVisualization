@@ -123,7 +123,7 @@
 
     async function init() {
       // Load the data once
-      const rawData = await d3.csv('https://flunky.github.io/cars2017.csv');
+      const rawData = await d3.csv('https://lijuan-geng.github.io/cs416-narrativevisualization/cars2017.csv');
 
       // Filter to get only gasoline cars
       const gasolineCars = rawData.filter(d => d.Fuel === "Gasoline");
